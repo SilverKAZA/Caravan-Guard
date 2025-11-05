@@ -7,6 +7,6 @@ public class Wagon : MonoBehaviour
     public void TakeDamage(int damage)
     {
         _health -= damage;
-        Debug.Log("Wagon health: " + damage);
+        //Debug.Log("Wagon health: " + _health);
     }
 }
