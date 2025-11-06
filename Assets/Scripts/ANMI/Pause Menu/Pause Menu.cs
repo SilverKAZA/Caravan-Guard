@@ -48,7 +48,7 @@ public class PauseMenu : MonoBehaviour
         SceneManager.activeSceneChanged -= OnSceneChanged;
     }
 
-    public void Info()
+    public void OpenAutors()
     {
         if (Autors != null)
         {
@@ -58,7 +58,7 @@ public class PauseMenu : MonoBehaviour
         }
     }
 
-    public void CloseInfo()
+    public void CloseAutors()
     {
         if (isAuthorsVisible)
         {
