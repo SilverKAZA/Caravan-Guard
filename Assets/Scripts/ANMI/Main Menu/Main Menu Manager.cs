@@ -9,7 +9,6 @@ public class MainMenuManager : MonoBehaviour
     [SerializeField] private GameObject AutorsPanel;
     [SerializeField] private GameObject SettingsPanel;
 
-    private bool isVideoPlaying = false;
     private bool isAuthorsVisible = false;
     private bool isSettingsVisible = false;
 

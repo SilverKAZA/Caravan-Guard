@@ -8,18 +8,20 @@ public class PauseMenu : MonoBehaviour
 {
     public static PauseMenu Instance { get; private set; }
 
-    public bool PauseGame { get; private set; }
-    public GameObject PauseGameMenu;
-    public GameObject Settings;
-    private bool isSettingsVisible = false;
-    public GameObject Autors;
-    private bool isAuthorsVisible = false;
     public AudioClip clickSound;
+    public GameObject player;
+    public GameObject Settings;
+    public GameObject Autors;
+    public GameObject PauseGameMenu;
+    public bool PauseGame { get; private set; }
+    private bool isSettingsVisible = false;
+    private bool isAuthorsVisible = false;
     public float volume = 1f;
     [SerializeField]  private AudioSource audioSource;
 
     private void Awake()
     {
+        Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false;
         if (Instance == null)
         {
             Instance = this;
@@ -100,7 +102,16 @@ public class PauseMenu : MonoBehaviour
         PauseGameMenu.SetActive(false);
         Time.timeScale = 1f;
         PauseGame = false;
-        Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false;
+        // Принудительно обновляем курсор
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.None; // сбрасываем
+        Cursor.lockState = CursorLockMode.Locked;
+        if (player != null)
+        {
+            var controller = player.GetComponent<playerStamina>();
+            if (controller != null)
+                controller.enabled = true;
+        }
     }
 
     public void Pause()
@@ -109,6 +120,13 @@ public class PauseMenu : MonoBehaviour
         PauseGameMenu.SetActive(true);
         Time.timeScale = 0f;
         PauseGame = true;
+
+        if (player != null)
+        {
+            var controller = player.GetComponent<playerStamina>();
+            if (controller != null)
+                controller.enabled = false;
+        }
     }
 
     public void LoadMenu()
@@ -136,8 +154,11 @@ public class PauseMenu : MonoBehaviour
 
     public void CloseSettings()
     {
-        PlayClickSound();
-        Settings.SetActive(false);
-        isSettingsVisible = false;
+        if (!isSettingsVisible)
+        {
+            PlayClickSound();
+            Settings.SetActive(false);
+            isSettingsVisible = false;
+        }
     }
 }
