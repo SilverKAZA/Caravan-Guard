@@ -2426,11 +2426,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7aa95b484c6929d4cbe9f780c729e67a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _health: 100
+  _maxHealth: 100
   _speedRun: 3
   _attackRange: 2.2
   _attackCooldown: 1
-  _damage: 1
+  _damage: 5
 --- !u!1 &7582494527398632709
 GameObject:
   m_ObjectHideFlags: 0

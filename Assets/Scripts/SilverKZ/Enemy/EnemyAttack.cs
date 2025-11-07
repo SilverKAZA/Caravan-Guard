@@ -61,6 +61,7 @@ public class EnemyAttack : MonoBehaviour
         if (_distWagon < _attackRange)
         {
             _wagon.TakeDamage(_damage);
+            TakeDamage(20);
         }
         else
         {

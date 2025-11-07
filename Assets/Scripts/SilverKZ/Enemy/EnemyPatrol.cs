@@ -70,6 +70,7 @@ public class EnemyPatrol : MonoBehaviour
             if (_state == State.Idle || _patrolPoints.Length == 0) return;
 
             _isWalk = true;
+            _isRun = false;
             Patroling();
         }
 
@@ -80,7 +81,33 @@ public class EnemyPatrol : MonoBehaviour
 
     public void Damage()
     {
-        Debug.Log("_damage: " + _damage);
+        if (_distWagon < _attackRange)
+        {
+            _wagon.TakeDamage(_damage);
+            TakeDamage(20);
+        }
+        else
+        {
+            _player.TakeDamage(_damage);
+            TakeDamage(20);
+        }
+    }
+
+    public void TakeDamage(float damage)
+    {
+        _health -= damage;
+
+        if (_health <= 0)
+        {
+            StartCoroutine(Die());
+        }
+    }
+
+    private IEnumerator Die()
+    {
+        yield return new WaitForSeconds(3f);
+        //onEnemyDeath?.Invoke(gameObject);
+        //Destroy(gameObject);
     }
 
     private void Patroling()

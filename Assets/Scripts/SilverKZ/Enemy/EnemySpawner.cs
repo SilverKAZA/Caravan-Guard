@@ -11,13 +11,6 @@ public class EnemySpawner : MonoBehaviour
 
     private int _currentEnemies;
 
-    // Delete !!!!!!!!!!!!!!!!!!!!!!!!
-    private void Start()
-    {
-        _currentEnemies = 0;
-        SpawnEnemy();
-    }
-
     private void OnEnable()
     {
         EnemyAttack.onEnemyDeath += EnemyDeath;
@@ -35,7 +28,8 @@ public class EnemySpawner : MonoBehaviour
 
     private void OnTriggerEnter(Collider collision)
     {
-        if (collision.TryGetComponent(out Wagon wagon))
+        //if (collision.TryGetComponent(out Wagon wagon))
+        if (collision.TryGetComponent(out Player player)) // !!!!!!   Delete For test
         {
             _currentEnemies = 0;
             SpawnEnemy();

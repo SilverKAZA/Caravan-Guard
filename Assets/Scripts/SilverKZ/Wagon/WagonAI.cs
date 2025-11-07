@@ -23,10 +23,12 @@ public class WagonAI : MonoBehaviour
     [SerializeField] private float _slopeThreshold = 2f; // Minimum tilt angle for compensation
     [SerializeField] private float _waypointThreshold = 3f;
     [SerializeField] private Transform[] _waypoints;
-    
+    [SerializeField] private float _pickupCooldown = 0.5f;
 
     private int _currentWaypoint = 0;
     private Rigidbody _rb;
+    private bool _isMove = false;
+    private float _lastPickupTime;
 
     private void Start()
     {
@@ -36,11 +38,12 @@ public class WagonAI : MonoBehaviour
         _frontRight.radius += 0.02f;
         _rearLeft.radius += 0.02f;
         _rearRight.radius += 0.02f;
+        _isMove = false;
     }
 
     private void FixedUpdate()
     {
-        if (_waypoints.Length == 0) return;
+        if (_waypoints.Length == 0 || _isMove == false) return;
 
         // Current target point
         Vector3 target = _waypoints[_currentWaypoint].position;
@@ -59,13 +62,59 @@ public class WagonAI : MonoBehaviour
         // Switch to the next point if close
         if (Vector3.Distance(transform.position, target) < _waypointThreshold)
         {
-            _currentWaypoint = (_currentWaypoint + 1) % _waypoints.Length;
-        }
+            //_currentWaypoint = (_currentWaypoint + 1) % _waypoints.Length;
+            _currentWaypoint++;
 
+            if (_currentWaypoint == _waypoints.Length)
+            {
+                _isMove = false;
+                gameObject.GetComponent<Wagon>().LevelComplet();
+            }
+        }
+        
         // Updating the positions of the visual wheels
         UpdateWheelMeshes();
-
         HillAssist();
+    }
+
+    public void Pickup()
+    {
+        if (Time.time - _lastPickupTime < _pickupCooldown) return;
+
+        _lastPickupTime = Time.time;
+        _isMove = !_isMove;
+
+        if (_isMove == false)
+        {
+            StopWagon();
+        }
+        else
+        {
+            StartWagon();
+        }
+    }
+
+    private void StartWagon()
+    {
+        _rearLeft.brakeTorque = 0;
+        _rearRight.brakeTorque = 0;
+
+        _frontLeft.brakeTorque = 0;
+        _frontRight.brakeTorque = 0;
+    }
+
+    private void StopWagon()
+    {
+        float stopTorque = 1000f;
+
+        _frontLeft.motorTorque = 0f;
+        _frontRight.motorTorque = 0f;
+
+        _rearLeft.brakeTorque = stopTorque;
+        _rearRight.brakeTorque = stopTorque;
+
+        _frontLeft.brakeTorque = stopTorque;
+        _frontRight.brakeTorque = stopTorque;
     }
 
     private void UpdateWheelMeshes()
