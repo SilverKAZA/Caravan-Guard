@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 
 public class playerStamina : MonoBehaviour
 {
@@ -7,33 +8,43 @@ public class playerStamina : MonoBehaviour
     public Image staminaBar;
 
     [Header("Movement")]
-    public float walkSpeed = 5f;            
-    public float runSpeed = 16f;           
-    public float jumpForce = 3f;            
+    public float walkSpeed = 5f;
+    public float runSpeed = 16f;
+    public float jumpForce = 3f;
 
     [Header("Energy for Running")]
-    public float maxEnergy = 100f;            // максимальная энергия бега (в секундах)
-    public float energyConsumptionRate = 10f;  // сколько энергии тратится в секунду при беге
-    public float energyRecoveryRate = 5f;   // скорость восстановления энергии в секунду
+    public float maxEnergy = 100f;
+    public float energyConsumptionRate = 10f;
+    public float energyRecoveryRate = 5f;
 
     [Header("Camera & Mouse")]
-    public Transform cameraTransform;       // для вращения камеры
-    public float mouseSensitivity = 2f;     // чувствительность мыши
+    public Transform cameraTransform;
+    [HideInInspector] public bool allowMouseLook = true;
+    public float mouseSensitivity = 2f;
+
+    [Header("Fade Settings")]
+    public float fadeOutDuration = 1.5f;
+    public float fadeInDuration = 0.8f;
 
     private Rigidbody rb;
     private float rotationX = 0f;
-
     private bool isGrounded = false;
-
     private float currentEnergy;
+    private CanvasGroup canvasGroup;
+    private Coroutine fadeCoroutine;
+    private bool isAtMax = true;
 
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
-        if (cameraTransform == null)
-            cameraTransform = Camera.main.transform;
+        if (cameraTransform == null) cameraTransform = Camera.main.transform;
 
         currentEnergy = maxEnergy;
+        canvasGroup = staminaBar.GetComponentInParent<CanvasGroup>() ?? staminaBar.transform.parent.gameObject.AddComponent<CanvasGroup>();
+        canvasGroup.alpha = 0f;
+
+        if (PlayerPrefs.HasKey("mouseSensitivity"))
+            mouseSensitivity = PlayerPrefs.GetFloat("mouseSensitivity");
     }
 
     private void Update()
@@ -43,97 +54,93 @@ public class playerStamina : MonoBehaviour
         HandleCameraRotation();
         HandleEnergy();
         UpdateStaminaUI();
+
+        if (currentEnergy >= maxEnergy && !isAtMax)
+        {
+            isAtMax = true;
+            StartFade(0f, fadeOutDuration);
+        }
+        else if (currentEnergy < maxEnergy && isAtMax)
+        {
+            isAtMax = false;
+            StartFade(1f, fadeInDuration);
+        }
     }
 
     private void HandleMovement()
     {
-        float moveHorizontal = Input.GetAxis("Horizontal");
-        float moveVertical = Input.GetAxis("Vertical");
+        float h = Input.GetAxis("Horizontal"), v = Input.GetAxis("Vertical");
+        Vector3 dir = (transform.forward * v + transform.right * h).normalized;
+        bool run = Input.GetKey(KeyCode.LeftShift) && currentEnergy > 0 && (h != 0 || v != 0);
+        float speed = run ? runSpeed : walkSpeed;
 
-        Vector3 moveDirection = (transform.forward * moveVertical + transform.right * moveHorizontal).normalized;
+        Vector3 vel = rb.linearVelocity;
+        vel.x = dir.x * speed;
+        vel.z = dir.z * speed;
+        rb.linearVelocity = vel;
 
-        bool isRunning = Input.GetKey(KeyCode.LeftShift) && currentEnergy > 0 && (moveHorizontal != 0 || moveVertical != 0);
-
-        float speed = isRunning ? runSpeed : walkSpeed;
-
-        Vector3 desiredVelocity = moveDirection * speed;
-        Vector3 velocity = rb.linearVelocity;
-
-        // Обновляем горизонтальную скорость, вертикальная скорость остается без изменений
-        velocity.x = desiredVelocity.x;
-        velocity.z = desiredVelocity.z;
-        rb.linearVelocity = velocity;
-
-        // Затраты энергии при беге
-        if (isRunning)
-        {
-            currentEnergy -= energyConsumptionRate * Time.deltaTime;
-            if (currentEnergy < 0)
-                currentEnergy = 0;
-        }
+        if (run)
+            currentEnergy = Mathf.Max(0, currentEnergy - energyConsumptionRate * Time.deltaTime);
     }
 
     private void HandleJump()
     {
         if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
         {
-            // Сброс вертикальной скорости перед прыжком (чтобы прыжок был более предсказуемым)
-            Vector3 velocity = rb.linearVelocity;
-            velocity.y = 0;
-            rb.linearVelocity = velocity;
-
+            Vector3 vel = rb.linearVelocity; vel.y = 0;
+            rb.linearVelocity = vel;
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
-            isGrounded = false; // чтобы не прыгать в воздухе до следующего касания
+            isGrounded = false;
         }
     }
 
     private void HandleCameraRotation()
     {
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
-
-        // Вращение персонажа по горизонтали
-        transform.Rotate(0, mouseX, 0);
-
-        // Вращение камеры по вертикали с ограничениями
-        rotationX -= mouseY;
-        rotationX = Mathf.Clamp(rotationX, -90f, 90f);
+        if (!allowMouseLook) return;
+        float mx = Input.GetAxis("Mouse X") * mouseSensitivity;
+        float my = Input.GetAxis("Mouse Y") * mouseSensitivity;
+        transform.Rotate(0, mx, 0);
+        rotationX = Mathf.Clamp(rotationX - my, -90f, 90f);
         cameraTransform.localRotation = Quaternion.Euler(rotationX, 0, 0);
     }
 
     private void HandleEnergy()
     {
         if (!Input.GetKey(KeyCode.LeftShift) && currentEnergy < maxEnergy)
-        {
-            currentEnergy += energyRecoveryRate * Time.deltaTime;
-            if (currentEnergy > maxEnergy)
-                currentEnergy = maxEnergy;
-        }
+            currentEnergy = Mathf.Min(maxEnergy, currentEnergy + energyRecoveryRate * Time.deltaTime);
     }
 
     private void UpdateStaminaUI()
     {
-        if (staminaBar != null)
+        if (staminaBar)
             staminaBar.fillAmount = Mathf.Lerp(staminaBar.fillAmount, currentEnergy / maxEnergy, Time.deltaTime * 10f);
     }
 
-    private void OnCollisionStay(Collision collision)
+    private void OnCollisionStay(Collision c)
     {
-        // Простая проверка - если есть контакт снизу с чем-либо, считаем, что на земле
-        foreach (ContactPoint contact in collision.contacts)
-        {
-            if (Vector3.Dot(contact.normal, Vector3.up) > 0.5f)
-            {
-                isGrounded = true;
-                return;
-            }
-        }
+        foreach (var p in c.contacts)
+            if (Vector3.Dot(p.normal, Vector3.up) > 0.5f) { isGrounded = true; return; }
     }
 
-    private void OnCollisionExit(Collision collision)
+    private void OnCollisionExit(Collision c) => isGrounded = false;
+
+    private void StartFade(float target, float dur)
     {
-        // При выходе из столкновения не гарантируем сразу, что на земле — переопределим isGrounded через Update,
-        // но чтобы не сделать прыжки в воздухе, оставим логику простой (если хотите, можно улучшить)
-        isGrounded = false;
+        if (fadeCoroutine != null) StopCoroutine(fadeCoroutine);
+        fadeCoroutine = StartCoroutine(FadeCanvas(target, dur));
     }
+
+    private IEnumerator FadeCanvas(float target, float dur)
+    {
+        float start = canvasGroup.alpha, t = 0f;
+        while (t < dur)
+        {
+            t += Time.deltaTime;
+            canvasGroup.alpha = Mathf.Lerp(start, target, t / dur);
+            yield return null;
+        }
+        canvasGroup.alpha = target;
+    }
+
+    public void SetMouseSensitivity(float newSensitivity) => mouseSensitivity = newSensitivity;
 }

@@ -1,58 +1,77 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 
 public class ManaBar : MonoBehaviour
 {
     [Header("Настройки маны")]
-    public float maxMana = 100f;      // Максимальный запас маны
-    public float currentMana;         // Текущее количество маны
+    public float maxMana = 100f;
+    public float currentMana;
 
     [Header("UI элемент маны")]
-    public Image manaBar;             // Ссылка на Image с Fill Amount
+    public Image manaBar;
 
-    [Header("Плавность обновления (опционально)")]
+    [Header("Плавность обновления")]
     [Range(0f, 20f)]
-    public float smoothSpeed = 10f;   // Скорость плавного изменения полоски
+    public float smoothSpeed = 10f;
+
+    [Header("Параметры исчезновения/появления")]
+    public float fadeOutDuration = 1.5f;
+    public float fadeInDuration = 0.8f;
+
+    private CanvasGroup canvasGroup;
+    private Coroutine fadeCoroutine;
+    private bool isAtMax = false; // Чтобы не запускать корутину по сто раз
 
     private void Start()
     {
-        // Инициализация
         currentMana = maxMana;
-
-        // Обновляем UI сразу при старте
         UpdateManaUI(true);
+
+        // Добавляем или находим CanvasGroup
+        canvasGroup = GetComponent<CanvasGroup>();
+        if (canvasGroup == null)
+            canvasGroup = gameObject.AddComponent<CanvasGroup>();
+
+        canvasGroup.alpha = 1f;
     }
 
     private void Update()
     {
-        // Для теста (можно удалить позже):
+        // Тестовые клавиши
         if (Input.GetKeyDown(KeyCode.T))
-            SpendMana(15f); // нажми T — потратить ману
+            SpendMana(15f);
         if (Input.GetKeyDown(KeyCode.Y))
-            RestoreMana(15f); // нажми Y — восстановить ману
+            RestoreMana(15f);
 
-        // Обновляем визуальное отображение
         UpdateManaUI();
+
+        // Проверяем состояние и запускаем нужный fade
+        if (currentMana >= maxMana && !isAtMax)
+        {
+            isAtMax = true;
+            StartFade(0f, fadeOutDuration);
+        }
+        else if (currentMana < maxMana && isAtMax)
+        {
+            isAtMax = false;
+            StartFade(1f, fadeInDuration);
+        }
     }
 
     public void SpendMana(float amount)
     {
-        currentMana -= amount;
-        if (currentMana < 0)
-            currentMana = 0;
+        currentMana = Mathf.Max(0, currentMana - amount);
     }
 
     public void RestoreMana(float amount)
     {
-        currentMana += amount;
-        if (currentMana > maxMana)
-            currentMana = maxMana;
+        currentMana = Mathf.Min(maxMana, currentMana + amount);
     }
 
     private void UpdateManaUI(bool instant = false)
     {
-        if (manaBar == null)
-            return;
+        if (manaBar == null) return;
 
         float targetFill = currentMana / maxMana;
 
@@ -60,5 +79,28 @@ public class ManaBar : MonoBehaviour
             manaBar.fillAmount = targetFill;
         else
             manaBar.fillAmount = Mathf.Lerp(manaBar.fillAmount, targetFill, Time.deltaTime * smoothSpeed);
+    }
+
+    private void StartFade(float targetAlpha, float duration)
+    {
+        if (fadeCoroutine != null)
+            StopCoroutine(fadeCoroutine);
+
+        fadeCoroutine = StartCoroutine(FadeCanvasGroup(targetAlpha, duration));
+    }
+
+    private IEnumerator FadeCanvasGroup(float targetAlpha, float duration)
+    {
+        float startAlpha = canvasGroup.alpha;
+        float time = 0f;
+
+        while (time < duration)
+        {
+            time += Time.deltaTime;
+            canvasGroup.alpha = Mathf.Lerp(startAlpha, targetAlpha, time / duration);
+            yield return null;
+        }
+
+        canvasGroup.alpha = targetAlpha;
     }
 }
